@@ -119,6 +119,7 @@ def pytest_addoption(parser):
     )
 
 
+@pytest.hookimpl(trylast=True)
 def pytest_collect_file(
     path: py.path.local, parent: pytest.Collector
 ) -> Optional[RSTModule]:

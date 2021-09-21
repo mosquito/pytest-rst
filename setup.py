@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='pytest-rst',
-    version='0.0.5',
+    version='0.0.6',
     author='Dmitry Orlov',
     author_email='me@mosquito.su',
     license='MIT',
