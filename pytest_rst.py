@@ -1,5 +1,6 @@
 from types import CodeType
 from typing import Iterable, Optional, TextIO
+from io import StringIO
 
 import docutils.frontend
 import docutils.nodes
@@ -38,7 +39,7 @@ def parse_rst(fp: TextIO, **kwargs) -> docutils.nodes.document:
 
     if not settings.strict_visitor:
         # Hide all messages
-        document.reporter.error = lambda a, b, *_, **__: b
+        document.reporter.stream = StringIO()
 
     parser.parse(fp.read(), document)
     return document
