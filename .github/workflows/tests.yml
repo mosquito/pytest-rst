@@ -29,9 +29,6 @@ jobs:
             toxenv: checkdoc
             os: ubuntu-latest
 
-          - python: '3.6'
-            toxenv: py36
-            os: ubuntu-latest
           - python: '3.7'
             toxenv: py37
             os: ubuntu-latest
@@ -42,9 +39,6 @@ jobs:
             toxenv: py39
             os: ubuntu-latest
 
-          - python: '3.6'
-            toxenv: py36
-            os: macos-latest
           - python: '3.7'
             toxenv: py37
             os: macos-latest
@@ -55,9 +49,6 @@ jobs:
             toxenv: py39
             os: macos-latest
 
-          - python: '3.6'
-            toxenv: py36
-            os: windows-latest
           - python: '3.7'
             toxenv: py37
             os: windows-latest
