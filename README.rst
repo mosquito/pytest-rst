@@ -1,7 +1,3 @@
-.. image:: https://coveralls.io/repos/github/mosquito/pytest-rst/badge.svg?branch=master
-   :target: https://coveralls.io/github/mosquito/pytest-rst
-   :alt: Coveralls
-
 .. image:: https://github.com/mosquito/pytest-rst/workflows/tests/badge.svg
    :target: https://github.com/mosquito/pytest-rst/actions?query=workflow%3Atests
    :alt: Actions
