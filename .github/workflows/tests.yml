@@ -38,6 +38,12 @@ jobs:
           - python: '3.9'
             toxenv: py39
             os: ubuntu-latest
+          - python: '3.10'
+            toxenv: py310
+            os: ubuntu-latest
+          - python: '3.11'
+            toxenv: py311
+            os: ubuntu-latest
 
           - python: '3.7'
             toxenv: py37
@@ -48,6 +54,12 @@ jobs:
           - python: '3.9'
             toxenv: py39
             os: macos-latest
+          - python: '3.10'
+            toxenv: py310
+            os: macos-latest
+          - python: '3.11'
+            toxenv: py311
+            os: macos-latest
 
           - python: '3.7'
             toxenv: py37
@@ -57,6 +69,12 @@ jobs:
             os: windows-latest
           - python: '3.9'
             toxenv: py39
+            os: windows-latest
+          - python: '3.10'
+            toxenv: py310
+            os: windows-latest
+          - python: '3.11'
+            toxenv: py311
             os: windows-latest
 
     steps:

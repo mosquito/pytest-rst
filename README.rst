@@ -37,6 +37,7 @@ This block will running as a pytest test-case:
 
         assert True
 
+
 .. code-block:: python
     :name: test_first
 
