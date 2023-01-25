@@ -93,6 +93,6 @@ jobs:
     - name: Tests
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
-        FORCE_COLOR: yes
+        FORCE_COLOR: 1
         TOXENV: ${{ matrix.toxenv }}
       run: tox
