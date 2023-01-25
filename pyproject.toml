@@ -1,0 +1,48 @@
+[tool.poetry]
+name = "pytest-rst"
+version = "0.1.0"
+license = "MIT"
+description = "Test code from RST documents with pytest"
+authors = ["Dmitry Orlov <me@mosquito.su>"]
+readme = "README.rst"
+keywords=["pytest", "rst", "ReStructuredText", "documentation"]
+homepage = "https://github.com/mosquito/pytest-rst"
+classifiers = [
+    "Framework :: Pytest",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development",
+    "License :: OSI Approved :: MIT License",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "Natural Language :: Russian",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+packages = [{include = "pytest_rst.py"}]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+py = "^1.11.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.plugins.pytest11]
+pytest_rst = "pytest_rst"
+
+[tool.poetry.urls]
+"Source" = "https://github.com/mosquito/pytest-rst"
+"Tracker" = "https://github.com/mosquito/pytest-rst/issues"
+"Documentation" = "https://github.com/mosquito/pytest-rst/blob/master/README.rst"
