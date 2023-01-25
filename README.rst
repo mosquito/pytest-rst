@@ -2,8 +2,8 @@
    :target: https://coveralls.io/github/mosquito/pytest-rst
    :alt: Coveralls
 
-.. image:: https://github.com/aiokitchen/pytest-rst/workflows/tox/badge.svg
-   :target: https://github.com/aiokitchen/pytest-rst/actions?query=workflow%3Atox
+.. image:: https://github.com/mosquito/pytest-rst/workflows/tox/badge.svg
+   :target: https://github.com/mosquito/pytest-rst/actions?query=workflow%3Atox
    :alt: Actions
 
 .. image:: https://img.shields.io/pypi/v/pytest-rst.svg
