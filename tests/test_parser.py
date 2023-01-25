@@ -36,34 +36,21 @@ def test_parser(sample_fp):
     blocks = list(parse_code_blocks(sample_fp))
     assert blocks == [
         CodeBlock(
-            start_line=4,
+            start_line=5,
             params=(('name', 'test_first'),),
             syntax='python',
-            lines=('assert True\n', '\n',)
+            lines=('assert True',)
         ),
         CodeBlock(
             start_line=11,
-            params=(),
+            params=(('name', 'test_second'),),
             syntax='python',
-            lines=('assert True\n', '\n',)
+            lines=('assert True', 'assert not False', 'assert 1')
         ),
         CodeBlock(
-            start_line=20,
-            params=(('name', 'test_first'),),
-            syntax='python',
-            lines=('assert True\n', '\n',)
-        ),
-        CodeBlock(
-            start_line=27,
+            start_line=29,
             params=(),
             syntax='python',
-            lines=(
-                '.. code-block:: python\n',
-                '    .. code-block:: python\n',
-                '        .. code-block:: python\n',
-                '            .. code-block:: python\n',
-                '                .. code-block:: python\n',
-                '\n'
-            )
-        )
+            lines=('.. code-block:: python',)
+        ),
     ]
