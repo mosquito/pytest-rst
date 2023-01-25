@@ -7,7 +7,6 @@ from typing import (
     Iterable, Iterator, NamedTuple, Optional, Tuple, TextIO, List
 )
 
-import py
 import pytest
 
 
@@ -214,10 +213,7 @@ def pytest_addoption(parser):
 
 
 @pytest.hookimpl(trylast=True)
-def pytest_collect_file(
-    path: py.path.local, parent: pytest.Collector,
-) -> Optional[RSTModule]:
+def pytest_collect_file(path, parent: pytest.Collector) -> Optional[RSTModule]:
     if path.ext != ".rst":
         return None
-
     return RSTModule.from_parent(parent=parent, path=Path(path))
