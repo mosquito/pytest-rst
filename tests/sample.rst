@@ -13,6 +13,15 @@ Example 2:
     assert not False
     assert 1
 
+.. code-block:: python
+    :name: test_third
+
+    def test_func():
+
+        return 42
+
+    assert test_func() == 42
+
 Example 3:
 
 .. note::
@@ -42,3 +51,12 @@ Example 7:
 
 .. code-block::
     test
+
+Example 8:
+
+.. note::
+
+    Note here
+
+    .. code-block::
+        test

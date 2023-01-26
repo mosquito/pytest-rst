@@ -48,9 +48,30 @@ def test_parser(sample_fp):
             lines=('assert True', 'assert not False', 'assert 1')
         ),
         CodeBlock(
-            start_line=29,
+            start_line=18,
+            params=(('name', 'test_third'),),
+            syntax='python',
+            lines=(
+                'def test_func():', '', '    return 42', '',
+                'assert test_func() == 42'
+            )
+        ),
+        CodeBlock(
+            start_line=33,
+            params=(('name', 'test_first'),),
+            syntax='python',
+            lines=('assert True',)
+        ),
+        CodeBlock(
+            start_line=38,
             params=(),
             syntax='python',
-            lines=('.. code-block:: python',)
+            lines=(
+                '.. code-block:: python',
+                '    .. code-block:: python',
+                '        .. code-block:: python',
+                '            .. code-block:: python',
+                '                .. code-block:: python'
+            )
         ),
     ]
