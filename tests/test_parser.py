@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TextIO
+from collections.abc import Iterator
 
 import pytest
 
@@ -21,7 +21,7 @@ INDENT_CASES = [
 
 
 @pytest.fixture()
-def sample_fp() -> TextIO:
+def sample_fp() -> Iterator:
     path = Path(__file__).parent / "sample.rst"
     with open(path) as fp:
         yield fp
@@ -37,41 +37,44 @@ def test_parser(sample_fp):
     assert blocks == [
         CodeBlock(
             start_line=5,
-            params=(('name', 'test_first'),),
-            syntax='python',
-            lines=('assert True',)
+            params=(("name", "test_first"),),
+            syntax="python",
+            lines=("assert True",),
         ),
         CodeBlock(
             start_line=11,
-            params=(('name', 'test_second'),),
-            syntax='python',
-            lines=('assert True', 'assert not False', 'assert 1')
+            params=(("name", "test_second"),),
+            syntax="python",
+            lines=("assert True", "assert not False", "assert 1"),
         ),
         CodeBlock(
             start_line=18,
-            params=(('name', 'test_third'),),
-            syntax='python',
+            params=(("name", "test_third"),),
+            syntax="python",
             lines=(
-                'def test_func():', '', '    return 42', '',
-                'assert test_func() == 42'
-            )
+                "def test_func():",
+                "",
+                "    return 42",
+                "",
+                "assert test_func() == 42",
+            ),
         ),
         CodeBlock(
             start_line=33,
-            params=(('name', 'test_first'),),
-            syntax='python',
-            lines=('assert True',)
+            params=(("name", "test_first"),),
+            syntax="python",
+            lines=("assert True",),
         ),
         CodeBlock(
             start_line=38,
             params=(),
-            syntax='python',
+            syntax="python",
             lines=(
-                '.. code-block:: python',
-                '    .. code-block:: python',
-                '        .. code-block:: python',
-                '            .. code-block:: python',
-                '                .. code-block:: python'
-            )
+                ".. code-block:: python",
+                "    .. code-block:: python",
+                "        .. code-block:: python",
+                "            .. code-block:: python",
+                "                .. code-block:: python",
+            ),
         ),
     ]

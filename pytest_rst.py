@@ -1,10 +1,18 @@
 import logging
 import re
-import traceback
 from io import StringIO
 from pathlib import Path
 from types import CodeType
-from typing import Iterable, Iterator, List, NamedTuple, Optional, TextIO, Tuple
+from typing import (
+    Any,
+    Iterable,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    TextIO,
+    Tuple,
+)
 
 import pytest
 
@@ -98,20 +106,22 @@ def parse_code_blocks(fp: TextIO) -> Iterator[CodeBlock]:
             for lineno, line in code_lines:
                 if not line.startswith(":") and not params_parsed:
                     params_parsed = True
-                    line_first: int = lineno
+                    line_first = lineno
 
                 if not params_parsed:
                     match = re.match(
-                        r"^:(?P<param>.*):\s*(?P<value>.*)?$", line,
+                        r"^:(?P<param>.*):\s*(?P<value>.*)?$",
+                        line,
                     )
                     if match is None:
                         logging.warning(
                             "Ignore bad formatted rst param %r at line %d",
-                            line, lineno,
+                            line,
+                            lineno,
                         )
                         continue
                     groups = match.groupdict()
-                    params.append((groups["param"], groups.get("value")))
+                    params.append((groups["param"], groups.get("value") or ""))
                     continue
 
                 if previous_line and lineno != (previous_line + 1):
@@ -172,21 +182,26 @@ class RSTModule(pytest.Module):
                         ),
                         parent=self,
                         code=compile(
-                            source=code_fp.getvalue(), mode="exec",
+                            source=code_fp.getvalue(),
+                            mode="exec",
                             filename=self.fspath,
                         ),
                     )
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
-        "--rst-prefix", default="test_",
+        "--rst-prefix",
+        default="test_",
         help="RST code-block name prefix",
     )
 
 
 @pytest.hookimpl(trylast=True)
-def pytest_collect_file(path, parent: pytest.Collector) -> Optional[RSTModule]:
+def pytest_collect_file(
+    path: Any,
+    parent: pytest.Collector,
+) -> Optional[RSTModule]:
     if path.ext != ".rst":
         return None
     return RSTModule.from_parent(parent=parent, path=Path(path))
