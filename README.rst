@@ -1,6 +1,9 @@
+pytest-rst
+==========
+
 .. image:: https://github.com/mosquito/pytest-rst/workflows/tests/badge.svg
    :target: https://github.com/mosquito/pytest-rst/actions?query=workflow%3Atests
-   :alt: Actions
+   :alt: Tests
 
 .. image:: https://img.shields.io/pypi/v/pytest-rst.svg
    :target: https://pypi.python.org/pypi/pytest-rst/
@@ -15,37 +18,53 @@
 .. image:: https://img.shields.io/pypi/l/pytest-rst.svg
    :target: https://pypi.python.org/pypi/pytest-rst/
 
+A pytest plugin that discovers and runs Python code blocks embedded in
+reStructuredText files as test cases.
 
-pytest-rst run python tests in ReStructuredText
-===============================================
+Installation
+------------
 
-Code block must have ``:name:`` attribute starts with ``test_``.
+.. code-block:: bash
 
-Example
--------
+    pip install pytest-rst
 
-This block will running as a pytest test-case:
+Usage
+-----
+
+Add a ``:name:`` option starting with ``test_`` to any Python code block in
+your ``.rst`` files, and pytest will collect and run it automatically:
 
 .. code-block:: rst
 
     .. code-block:: python
-        :name: test_first
+        :name: test_example
 
-        assert True
-
+        assert 2 + 2 == 4
 
 .. code-block:: python
-    :name: test_first
+    :name: test_example
 
-    assert True
+    assert 2 + 2 == 4
 
+Code blocks without a ``test_`` name are ignored:
+
+.. code-block:: rst
+
+    .. code-block:: python
+
+        # this will not be collected by pytest
+        assert False
+
+.. code-block:: python
+
+    # this will not be collected by pytest
+    assert False
 
 Fixtures
 --------
 
-Code blocks can request pytest fixtures using the ``:fixtures:`` parameter.
-Fixtures are injected into the code block's namespace, so you can use them
-directly.
+Code blocks can request pytest fixtures using the ``:fixtures:`` option.
+Fixtures are injected into the code block's namespace.
 
 Single fixture:
 
@@ -81,25 +100,9 @@ Multiple fixtures (comma-separated):
 
 Any pytest fixture works, including custom ones defined in ``conftest.py``.
 
-This block just not running:
-
-.. code-block:: rst
-
-    .. code-block:: python
-
-        # not a test
-        assert False
-
-.. code-block:: python
-
-    # not a test
-    assert False
-
-
 Versioning
 ----------
 
-This software follows `Semantic Versioning`_
-
+This software follows `Semantic Versioning`_.
 
 .. _Semantic Versioning: http://semver.org/
