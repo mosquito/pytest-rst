@@ -700,3 +700,646 @@ def test_fixture_dependent_fixtures(pytester):
     result = pytester.runpytest("-v")
     result.stdout.fnmatch_lines(["*test_dependent*PASSED*"])
     assert result.ret == 0
+
+
+# --- Parser edge cases: indentation, formatting, structure ---
+
+
+def _parse(text):
+    """Parse RST text and return code blocks.
+
+    Appends a terminator line because the parser only yields a block
+    when a lower-indent line follows it.
+    """
+    from io import StringIO
+    return list(parse_code_blocks(StringIO(dedent(text) + "\n.\n")))
+
+
+class TestParserIndentation:
+    def test_no_blank_line_between_params_and_code(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_no_blank
+                assert True
+        """)
+        assert len(blocks) == 1
+        assert blocks[0].lines == ("assert True",)
+
+    def test_extra_blank_lines_before_code(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_blanks
+
+
+
+                assert True
+        """)
+        assert len(blocks) == 1
+        assert dict(blocks[0].params)["name"] == "test_blanks"
+        assert "assert True" in blocks[0].lines
+
+    def test_deeply_indented_code_block(self):
+        blocks = _parse("""\
+            .. note::
+
+                .. code-block:: python
+                    :name: test_deep
+
+                    x = 1
+                    assert x == 1
+        """)
+        assert len(blocks) == 1
+        assert dict(blocks[0].params)["name"] == "test_deep"
+        assert blocks[0].lines == ("x = 1", "assert x == 1")
+
+    def test_code_block_with_mixed_indentation_in_body(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_mixed_indent
+
+                def foo():
+                    return 42
+
+                assert foo() == 42
+        """)
+        assert len(blocks) == 1
+        assert blocks[0].lines == (
+            "def foo():",
+            "    return 42",
+            "",
+            "assert foo() == 42",
+        )
+
+    def test_tab_indented_rst_ignored(self):
+        """Tabs are not considered indentation by get_indent."""
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_tab
+
+                assert True
+        """)
+        assert len(blocks) == 1
+
+
+class TestParserMalformedRst:
+    def test_code_block_no_syntax(self):
+        """code-block without a language should not produce python blocks."""
+        blocks = _parse("""\
+            .. code-block::
+                :name: test_no_syntax
+
+                assert True
+        """)
+        assert all(b.syntax != "python" for b in blocks)
+
+    def test_code_block_wrong_syntax(self):
+        """code-block with non-python syntax should be skipped."""
+        blocks = _parse("""\
+            .. code-block:: javascript
+                :name: test_js
+
+                console.log("hi");
+
+            .. code-block:: python
+                :name: test_py
+
+                assert True
+        """)
+        python_blocks = [b for b in blocks if b.syntax == "python"]
+        assert len(python_blocks) == 1
+        assert dict(python_blocks[0].params)["name"] == "test_py"
+
+    def test_non_param_line_ends_param_parsing(self):
+        """A line not starting with : ends param parsing and becomes code."""
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_bad_param
+                not_a_param
+
+                assert True
+        """)
+        assert len(blocks) == 1
+        params = dict(blocks[0].params)
+        assert params["name"] == "test_bad_param"
+        # not_a_param is treated as code, not a param
+        assert "not_a_param" in blocks[0].lines
+
+    def test_malformed_param_with_colon_is_skipped(self):
+        """Param line starting with : but no closing : is warned/skipped."""
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_ok
+                :broken
+
+                assert True
+        """)
+        assert len(blocks) == 1
+        params = dict(blocks[0].params)
+        assert params["name"] == "test_ok"
+        assert "broken" not in params
+
+    def test_empty_code_block(self):
+        """Code block with params but no body."""
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_empty_body
+
+            Next paragraph.
+        """)
+        assert len(blocks) == 1
+        # All lines should be empty or the block should have no content
+        assert all(line.strip() == "" for line in blocks[0].lines)
+
+    def test_code_block_at_eof_not_yielded(self):
+        """Parser does not yield the last block if no lower-indent
+        line follows it (known limitation). Test this directly
+        without the _parse terminator."""
+        from io import StringIO
+        blocks = list(parse_code_blocks(StringIO(dedent("""\
+            .. code-block:: python
+                :name: test_eof
+
+                assert True"""))))
+        assert len(blocks) == 0
+
+    def test_code_block_before_trailing_text(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_trailing
+
+                assert True
+        """)
+        assert len(blocks) == 1
+        assert blocks[0].lines == ("assert True",)
+
+    def test_consecutive_code_blocks_no_separator(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_first
+
+                x = 1
+
+            .. code-block:: python
+                :name: test_second
+
+                y = 2
+        """)
+        python_blocks = [
+            b for b in blocks if b.syntax == "python"
+        ]
+        assert len(python_blocks) == 2
+        names = [dict(b.params).get("name") for b in python_blocks]
+        assert names == ["test_first", "test_second"]
+
+    def test_duplicate_param_last_wins(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_first_name
+                :name: test_second_name
+
+                assert True
+        """)
+        assert len(blocks) == 1
+        params = dict(blocks[0].params)
+        assert params["name"] == "test_second_name"
+
+    def test_code_block_directive_misspelled(self):
+        """Misspelled directive should not be collected."""
+        blocks = _parse("""\
+            .. codeblock:: python
+                :name: test_misspelled
+
+                assert True
+        """)
+        assert len(blocks) == 0
+
+    def test_param_with_extra_spaces(self):
+        """Extra spaces between : and value are consumed by the regex."""
+        blocks = _parse("""\
+            .. code-block:: python
+                :name:   test_spaces
+
+                assert True
+        """)
+        assert len(blocks) == 1
+        params = dict(blocks[0].params)
+        # The param regex \s* consumes leading spaces
+        assert params["name"] == "test_spaces"
+
+
+class TestParserStructure:
+    def test_non_python_block_between_python_blocks(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_before
+
+                x = 1
+
+            .. code-block:: bash
+
+                echo "hello"
+
+            .. code-block:: python
+                :name: test_after
+
+                y = 2
+        """)
+        python_blocks = [
+            b for b in blocks if b.syntax == "python"
+        ]
+        assert len(python_blocks) == 2
+
+    def test_code_block_inside_note_directive(self):
+        blocks = _parse("""\
+            .. note::
+
+                Some text here.
+
+                .. code-block:: python
+                    :name: test_in_note
+
+                    assert 1 + 1 == 2
+
+            After note.
+        """)
+        assert len(blocks) == 1
+        assert dict(blocks[0].params)["name"] == "test_in_note"
+
+    def test_multiple_nested_levels(self):
+        blocks = _parse("""\
+            .. warning::
+
+                .. tip::
+
+                    .. code-block:: python
+                        :name: test_nested
+
+                        result = 42
+                        assert result == 42
+        """)
+        assert len(blocks) == 1
+        assert dict(blocks[0].params)["name"] == "test_nested"
+        assert "result = 42" in blocks[0].lines
+
+    def test_block_with_only_blank_lines(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_blanks_only
+
+
+
+            End.
+        """)
+        assert len(blocks) == 1
+
+    def test_code_block_with_multiline_string_in_code(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_multiline_str
+
+                text = '''
+                hello
+                world
+                '''
+                assert "hello" in text
+        """)
+        assert len(blocks) == 1
+        code = "\n".join(blocks[0].lines)
+        assert "hello" in code
+        assert "world" in code
+
+    def test_rst_with_no_code_blocks(self):
+        blocks = _parse("""\
+            Title
+            =====
+
+            Just some text with no code blocks.
+
+            Another paragraph.
+        """)
+        assert blocks == []
+
+    def test_rst_with_only_unnamed_blocks(self):
+        blocks = _parse("""\
+            Example:
+
+            .. code-block:: python
+
+                x = 1
+
+            .. code-block:: python
+
+                y = 2
+        """)
+        # blocks are parsed but none have names
+        for b in blocks:
+            assert dict(b.params).get("name") is None
+
+
+# --- Integration tests: edge cases with pytester ---
+
+
+class TestIntegrationEdgeCases:
+    def test_code_block_no_name_not_collected(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_noname=dedent("""\
+                Example:
+
+                .. code-block:: python
+
+                    assert False
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        assert "FAILED" not in result.stdout.str()
+        assert result.ret == 5  # no tests collected
+
+    def test_non_test_prefix_not_collected(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_prefix=dedent("""\
+                Example:
+
+                .. code-block:: python
+                    :name: example_not_test
+
+                    assert False
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        assert "FAILED" not in result.stdout.str()
+        assert result.ret == 5
+
+    def test_syntax_error_in_code_block(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_syntax=dedent("""\
+                Broken:
+
+                .. code-block:: python
+                    :name: test_syntax_err
+
+                    def foo(
+                        # missing closing paren
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        assert result.ret != 0
+
+    def test_code_block_with_function_definition(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_func=dedent("""\
+                Functions:
+
+                .. code-block:: python
+                    :name: test_function_def
+
+                    def add(a, b):
+                        return a + b
+
+                    assert add(2, 3) == 5
+                    assert add(-1, 1) == 0
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_function_def*PASSED*"])
+        assert result.ret == 0
+
+    def test_code_block_with_class_definition(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_cls=dedent("""\
+                Classes:
+
+                .. code-block:: python
+                    :name: test_class_def
+
+                    class Counter:
+                        def __init__(self):
+                            self.n = 0
+
+                        def inc(self):
+                            self.n += 1
+                            return self.n
+
+                    c = Counter()
+                    assert c.inc() == 1
+                    assert c.inc() == 2
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_class_def*PASSED*"])
+        assert result.ret == 0
+
+    def test_code_block_with_imports(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_imports=dedent("""\
+                Imports:
+
+                .. code-block:: python
+                    :name: test_stdlib_imports
+
+                    import os
+                    import sys
+                    from pathlib import Path
+
+                    assert hasattr(os, "getcwd")
+                    assert hasattr(sys, "version")
+                    assert Path(".").exists()
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_stdlib_imports*PASSED*"])
+        assert result.ret == 0
+
+    def test_many_blocks_in_one_file(self, pytester):
+        blocks = []
+        for i in range(10):
+            blocks.append(dedent(f"""\
+                Block {i}:
+
+                .. code-block:: python
+                    :name: test_block_{i}
+
+                    assert {i} == {i}
+            """))
+        blocks.append("End.\n")
+        pytester.makefile(".rst", test_many="\n".join(blocks))
+        result = pytester.runpytest("-v")
+        for i in range(10):
+            result.stdout.fnmatch_lines([f"*test_block_{i}*PASSED*"])
+        assert result.ret == 0
+
+    def test_code_block_deeply_nested_in_directives(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_deep=dedent("""\
+                .. note::
+
+                    Some context here.
+
+                    .. code-block:: python
+                        :name: test_inside_note
+
+                        assert 1 + 1 == 2
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_inside_note*PASSED*"])
+        assert result.ret == 0
+
+    def test_non_python_code_block_ignored(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_lang=dedent("""\
+                .. code-block:: javascript
+                    :name: test_js_block
+
+                    throw new Error("should not run");
+
+                .. code-block:: python
+                    :name: test_py_block
+
+                    assert True
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_py_block*PASSED*"])
+        assert "test_js_block" not in result.stdout.str()
+        assert result.ret == 0
+
+    def test_code_block_with_blank_lines_in_body(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_blanks=dedent("""\
+                Blanks:
+
+                .. code-block:: python
+                    :name: test_with_blanks
+
+                    x = 1
+
+                    y = 2
+
+                    assert x + y == 3
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_with_blanks*PASSED*"])
+        assert result.ret == 0
+
+    def test_code_block_exception_traceback_has_line_numbers(
+        self, pytester,
+    ):
+        pytester.makefile(
+            ".rst",
+            test_tb=dedent("""\
+                Traceback:
+
+                .. code-block:: python
+                    :name: test_traceback
+
+                    x = 1
+                    y = 2
+                    assert x == y
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_traceback*FAILED*"])
+        # Verify the traceback references the .rst file
+        result.stdout.fnmatch_lines(["*test_tb.rst*"])
+        assert result.ret != 0
+
+    def test_empty_rst_file(self, pytester):
+        pytester.makefile(".rst", test_empty="")
+        result = pytester.runpytest("-v")
+        assert result.ret == 5  # no tests collected
+
+    def test_rst_file_with_only_text(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_text=dedent("""\
+                Title
+                =====
+
+                Just a document with no code at all.
+
+                Another section
+                ---------------
+
+                Still no code.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        assert result.ret == 5
+
+    def test_code_block_at_end_of_file_not_collected(self, pytester):
+        """Block at EOF with no trailing content is not collected
+        (known parser limitation)."""
+        pytester.makefile(
+            ".rst",
+            test_eof=dedent("""\
+                EOF:
+
+                .. code-block:: python
+                    :name: test_at_eof
+
+                    assert True
+            """),
+        )
+        result = pytester.runpytest("-v")
+        assert result.ret == 5  # no tests collected
+
+    def test_fixture_and_plain_blocks_interleaved(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_interleave=dedent("""\
+                .. code-block:: python
+                    :name: test_plain_1
+
+                    assert 1 == 1
+
+                .. code-block:: python
+                    :name: test_with_fix
+                    :fixtures: tmp_path
+
+                    assert tmp_path.is_dir()
+
+                .. code-block:: python
+                    :name: test_plain_2
+
+                    assert 2 == 2
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines([
+            "*test_plain_1*PASSED*",
+            "*test_with_fix*PASSED*",
+            "*test_plain_2*PASSED*",
+        ])
+        assert result.ret == 0
