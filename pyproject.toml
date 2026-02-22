@@ -4,7 +4,7 @@ version = "0.1.5"
 description = "Test code from RST documents with pytest"
 authors = [{ name = "Dmitry Orlov", email = "me@mosquito.su" }]
 requires-python = ">=3.10,<4"
-readme = "README.rst"
+readme = {file = "README.rst", content-type = "text/x-rst"}
 license = "MIT"
 keywords = [
     "pytest",
