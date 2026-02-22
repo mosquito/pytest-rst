@@ -712,6 +712,7 @@ def _parse(text):
     when a lower-indent line follows it.
     """
     from io import StringIO
+
     return list(parse_code_blocks(StringIO(dedent(text) + "\n.\n")))
 
 
@@ -855,11 +856,18 @@ class TestParserMalformedRst:
         line follows it (known limitation). Test this directly
         without the _parse terminator."""
         from io import StringIO
-        blocks = list(parse_code_blocks(StringIO(dedent("""\
+
+        blocks = list(
+            parse_code_blocks(
+                StringIO(
+                    dedent("""\
             .. code-block:: python
                 :name: test_eof
 
-                assert True"""))))
+                assert True""")
+                )
+            )
+        )
         assert len(blocks) == 0
 
     def test_code_block_before_trailing_text(self):
@@ -884,9 +892,7 @@ class TestParserMalformedRst:
 
                 y = 2
         """)
-        python_blocks = [
-            b for b in blocks if b.syntax == "python"
-        ]
+        python_blocks = [b for b in blocks if b.syntax == "python"]
         assert len(python_blocks) == 2
         names = [dict(b.params).get("name") for b in python_blocks]
         assert names == ["test_first", "test_second"]
@@ -944,9 +950,7 @@ class TestParserStructure:
 
                 y = 2
         """)
-        python_blocks = [
-            b for b in blocks if b.syntax == "python"
-        ]
+        python_blocks = [b for b in blocks if b.syntax == "python"]
         assert len(python_blocks) == 2
 
     def test_code_block_inside_note_directive(self):
@@ -1170,14 +1174,16 @@ class TestIntegrationEdgeCases:
     def test_many_blocks_in_one_file(self, pytester):
         blocks = []
         for i in range(10):
-            blocks.append(dedent(f"""\
+            blocks.append(
+                dedent(f"""\
                 Block {i}:
 
                 .. code-block:: python
                     :name: test_block_{i}
 
                     assert {i} == {i}
-            """))
+            """)
+            )
         blocks.append("End.\n")
         pytester.makefile(".rst", test_many="\n".join(blocks))
         result = pytester.runpytest("-v")
@@ -1250,7 +1256,8 @@ class TestIntegrationEdgeCases:
         assert result.ret == 0
 
     def test_code_block_exception_traceback_has_line_numbers(
-        self, pytester,
+        self,
+        pytester,
     ):
         pytester.makefile(
             ".rst",
@@ -1337,9 +1344,11 @@ class TestIntegrationEdgeCases:
             """),
         )
         result = pytester.runpytest("-v")
-        result.stdout.fnmatch_lines([
-            "*test_plain_1*PASSED*",
-            "*test_with_fix*PASSED*",
-            "*test_plain_2*PASSED*",
-        ])
+        result.stdout.fnmatch_lines(
+            [
+                "*test_plain_1*PASSED*",
+                "*test_with_fix*PASSED*",
+                "*test_plain_2*PASSED*",
+            ]
+        )
         assert result.ret == 0
