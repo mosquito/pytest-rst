@@ -1,47 +1,108 @@
-[tool.poetry]
+[project]
 name = "pytest-rst"
 version = "0.1.5"
-license = "MIT"
 description = "Test code from RST documents with pytest"
-authors = ["Dmitry Orlov <me@mosquito.su>"]
+authors = [{ name = "Dmitry Orlov", email = "me@mosquito.su" }]
+requires-python = ">=3.10,<4"
 readme = "README.rst"
-keywords=["pytest", "rst", "ReStructuredText", "documentation"]
-homepage = "https://github.com/mosquito/pytest-rst"
+license = "MIT"
+keywords = [
+    "pytest",
+    "rst",
+    "ReStructuredText",
+    "documentation",
+]
 classifiers = [
     "Framework :: Pytest",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development",
     "License :: OSI Approved :: MIT License",
-    "Framework :: Pytest",
     "Intended Audience :: Developers",
     "Natural Language :: Russian",
     "Operating System :: MacOS",
     "Operating System :: POSIX",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
-packages = [{include = "pytest_rst.py"}]
 
-[tool.poetry.dependencies]
-python = "^3.7"
+[project.urls]
+Homepage = "https://github.com/mosquito/pytest-rst"
+Source = "https://github.com/mosquito/pytest-rst"
+Tracker = "https://github.com/mosquito/pytest-rst/issues"
+Documentation = "https://github.com/mosquito/pytest-rst/blob/master/README.rst"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.2.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.plugins.pytest11]
+[project.entry-points.pytest11]
 pytest-rst = "pytest_rst"
 
-[tool.poetry.urls]
-"Source" = "https://github.com/mosquito/pytest-rst"
-"Tracker" = "https://github.com/mosquito/pytest-rst/issues"
-"Documentation" = "https://github.com/mosquito/pytest-rst/blob/master/README.rst"
+[dependency-groups]
+dev = [
+    "mypy",
+    "ruff",
+    "pytest",
+    "pytest-cov",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.hatch.build.targets.sdist]
+include = ["pytest_rst.py"]
+
+[tool.hatch.build.targets.wheel]
+include = ["pytest_rst.py"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = false
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+follow_imports = "silent"
+no_implicit_reexport = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+files = [
+    "pytest_rst.py",
+    "tests",
+]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+check_untyped_defs = true
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_untyped_decorators = false
+disallow_untyped_defs = false
+warn_unused_ignores = false
+
+[tool.pytest.ini_options]
+log_cli = true
+
+[tool.ruff]
+line-length = 80
+exclude = [
+    ".git",
+    ".tox",
+    ".venv",
+    "build",
+    "dist",
+    "env",
+]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "C90"]
+ignore = ["C901"]
