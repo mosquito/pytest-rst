@@ -197,20 +197,22 @@ class RSTModule(pytest.Module):
                     continue
 
                 fixtures_value = params.get("fixtures", "")
-                fixture_names = set(_parse_fixtures(fixtures_value))
+                fixtures_found: set[str] = set(
+                    _parse_fixtures(fixtures_value),
+                )
 
                 # Scan for "# fixtures:" comments and strip them
                 filtered_lines = []
                 for line in code_block.lines:
                     match = COMMENT_FIXTURES_REGEXP.match(line.strip())
                     if match:
-                        fixture_names.update(
+                        fixtures_found.update(
                             _parse_fixtures(match.group(1)),
                         )
                     else:
                         filtered_lines.append(line)
 
-                fixture_names = tuple(sorted(fixture_names))
+                fixture_names = tuple(sorted(fixtures_found))
 
                 with StringIO() as code_fp:
                     code_fp.write("\n" * code_block.start_line)
