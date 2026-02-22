@@ -116,10 +116,7 @@ def test_parse_fixtures(value, expected):
 
 def test_fixtures_parsed_from_block(sample_fp):
     blocks = list(parse_code_blocks(sample_fp))
-    fixture_block = [
-        b for b in blocks
-        if dict(b.params).get("fixtures")
-    ]
+    fixture_block = [b for b in blocks if dict(b.params).get("fixtures")]
     assert len(fixture_block) == 1
     assert dict(fixture_block[0].params)["fixtures"] == "tmp_path"
 
@@ -194,21 +191,25 @@ def test_mixed_plain_and_fixture_blocks(pytester):
         """),
     )
     result = pytester.runpytest("-v")
-    result.stdout.fnmatch_lines([
-        "*test_plain*PASSED*",
-        "*test_fixtured*PASSED*",
-    ])
+    result.stdout.fnmatch_lines(
+        [
+            "*test_plain*PASSED*",
+            "*test_fixtured*PASSED*",
+        ]
+    )
     assert result.ret == 0
 
 
 def test_custom_fixture(pytester):
-    pytester.makeconftest(dedent("""\
+    pytester.makeconftest(
+        dedent("""\
         import pytest
 
         @pytest.fixture()
         def greeting():
             return "hello world"
-    """))
+    """)
+    )
     pytester.makefile(
         ".rst",
         test_custom=dedent("""\
@@ -275,13 +276,16 @@ def test_make_rst_test_func_signature():
     code = compile("x = a + b", "<test>", "exec")
     fn = _make_rst_test_func(code, ("a", "b"))
     import inspect
+
     params = list(inspect.signature(fn).parameters)
     assert params == ["a", "b"]
 
 
 def test_make_rst_test_func_injects_fixtures():
     code = compile(
-        "result.append(val * 2)", "<test>", "exec",
+        "result.append(val * 2)",
+        "<test>",
+        "exec",
     )
     fn = _make_rst_test_func(code, ("val", "result"))
     collected: list[int] = []
@@ -291,7 +295,9 @@ def test_make_rst_test_func_injects_fixtures():
 
 def test_make_rst_test_func_sets_dunder_name():
     code = compile(
-        "result.append(__name__)", "<test>", "exec",
+        "result.append(__name__)",
+        "<test>",
+        "exec",
     )
     fn = _make_rst_test_func(code, ("result",))
     collected: list[str] = []
@@ -325,7 +331,8 @@ def test_fixture_monkeypatch(pytester):
 
 
 def test_fixture_with_yield_teardown(pytester):
-    pytester.makeconftest(dedent("""\
+    pytester.makeconftest(
+        dedent("""\
         import pytest
 
         @pytest.fixture()
@@ -335,7 +342,8 @@ def test_fixture_with_yield_teardown(pytester):
             yield "value"
             teardown_marker = tmp_path / "teardown.txt"
             teardown_marker.write_text("teardown")
-    """))
+    """)
+    )
     pytester.makefile(
         ".rst",
         test_yield=dedent("""\
@@ -391,10 +399,12 @@ def test_fixture_runtime_error_reported(pytester):
         """),
     )
     result = pytester.runpytest("-v")
-    result.stdout.fnmatch_lines([
-        "*test_will_error*FAILED*",
-        "*RuntimeError: boom*",
-    ])
+    result.stdout.fnmatch_lines(
+        [
+            "*test_will_error*FAILED*",
+            "*RuntimeError: boom*",
+        ]
+    )
     assert result.ret != 0
 
 
@@ -444,10 +454,12 @@ def test_multiple_fixture_blocks_in_same_file(pytester):
         """),
     )
     result = pytester.runpytest("-v")
-    result.stdout.fnmatch_lines([
-        "*test_fix_a*PASSED*",
-        "*test_fix_b*PASSED*",
-    ])
+    result.stdout.fnmatch_lines(
+        [
+            "*test_fix_a*PASSED*",
+            "*test_fix_b*PASSED*",
+        ]
+    )
     assert result.ret == 0
 
 
@@ -475,10 +487,12 @@ def test_fixture_tmp_path_is_unique_per_block(pytester):
         """),
     )
     result = pytester.runpytest("-v")
-    result.stdout.fnmatch_lines([
-        "*test_path_a*PASSED*",
-        "*test_path_b*PASSED*",
-    ])
+    result.stdout.fnmatch_lines(
+        [
+            "*test_path_a*PASSED*",
+            "*test_path_b*PASSED*",
+        ]
+    )
     assert result.ret == 0
 
 
@@ -504,7 +518,9 @@ def test_rst_prefix_option_with_fixtures(pytester):
         """),
     )
     result = pytester.runpytest(
-        "-v", "--rst-prefix", "check_",
+        "-v",
+        "--rst-prefix",
+        "check_",
     )
     result.stdout.fnmatch_lines(["*check_prefixed*PASSED*"])
     assert "test_skipped_by_prefix" not in result.stdout.str()
@@ -512,7 +528,8 @@ def test_rst_prefix_option_with_fixtures(pytester):
 
 
 def test_scoped_fixture(pytester):
-    pytester.makeconftest(dedent("""\
+    pytester.makeconftest(
+        dedent("""\
         import pytest
 
         call_count = 0
@@ -522,7 +539,8 @@ def test_scoped_fixture(pytester):
             global call_count
             call_count += 1
             return call_count
-    """))
+    """)
+    )
     pytester.makefile(
         ".rst",
         test_scope=dedent("""\
@@ -546,21 +564,25 @@ def test_scoped_fixture(pytester):
         """),
     )
     result = pytester.runpytest("-v")
-    result.stdout.fnmatch_lines([
-        "*test_scope_a*PASSED*",
-        "*test_scope_b*PASSED*",
-    ])
+    result.stdout.fnmatch_lines(
+        [
+            "*test_scope_a*PASSED*",
+            "*test_scope_b*PASSED*",
+        ]
+    )
     assert result.ret == 0
 
 
 def test_autouse_fixture_with_fixture_block(pytester):
-    pytester.makeconftest(dedent("""\
+    pytester.makeconftest(
+        dedent("""\
         import pytest
 
         @pytest.fixture(autouse=True)
         def auto_env(monkeypatch):
             monkeypatch.setenv("RST_AUTO", "yes")
-    """))
+    """)
+    )
     pytester.makefile(
         ".rst",
         test_auto=dedent("""\
@@ -648,7 +670,8 @@ def test_fixture_with_imports_in_code(pytester):
 
 
 def test_fixture_dependent_fixtures(pytester):
-    pytester.makeconftest(dedent("""\
+    pytester.makeconftest(
+        dedent("""\
         import pytest
 
         @pytest.fixture()
@@ -658,7 +681,8 @@ def test_fixture_dependent_fixtures(pytester):
         @pytest.fixture()
         def doubled(base_value):
             return base_value * 2
-    """))
+    """)
+    )
     pytester.makefile(
         ".rst",
         test_dep=dedent("""\

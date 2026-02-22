@@ -147,28 +147,26 @@ def parse_code_blocks(fp: TextIO) -> Iterator[CodeBlock]:
 
 
 def _parse_fixtures(value: str) -> Tuple[str, ...]:
-    return tuple(
-        name for name in
-        (s.strip() for s in value.split(","))
-        if name
-    )
+    return tuple(name for name in (s.strip() for s in value.split(",")) if name)
 
 
 def _make_rst_test_func(
-    code: CodeType, fixture_names: Tuple[str, ...],
+    code: CodeType,
+    fixture_names: Tuple[str, ...],
 ) -> FunctionType:
     params = ", ".join(fixture_names)
     wrapper_src = textwrap.dedent(f"""\
         def rst_test_func({params}):
             ns = {{"__name__": "__main__"}}
-            ns.update({{ {", ".join(
-                f"{n!r}: {n}" for n in fixture_names
-            )} }})
+            ns.update({{ {", ".join(f"{n!r}: {n}" for n in fixture_names)} }})
             exec(code, ns)
     """)
     local_ns: dict[str, Any] = {}
-    exec(compile(wrapper_src, "<rst-fixture-wrapper>", "exec"),
-         {"code": code}, local_ns)
+    exec(
+        compile(wrapper_src, "<rst-fixture-wrapper>", "exec"),
+        {"code": code},
+        local_ns,
+    )
     fn: FunctionType = local_ns["rst_test_func"]
     return fn
 
@@ -219,7 +217,8 @@ class RSTModule(pytest.Module):
 
                 if fixture_names:
                     wrapper = _make_rst_test_func(
-                        code, fixture_names,
+                        code,
+                        fixture_names,
                     )
                     yield pytest.Function.from_parent(
                         name=item_name,
