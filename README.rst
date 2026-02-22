@@ -40,6 +40,47 @@ This block will running as a pytest test-case:
     assert True
 
 
+Fixtures
+--------
+
+Code blocks can request pytest fixtures using the ``:fixtures:`` parameter.
+Fixtures are injected into the code block's namespace, so you can use them
+directly.
+
+Single fixture:
+
+.. code-block:: rst
+
+    .. code-block:: python
+        :name: test_file_ops
+        :fixtures: tmp_path
+
+        p = tmp_path / "test.txt"
+        p.write_text("hello")
+        assert p.read_text() == "hello"
+
+.. code-block:: python
+    :name: test_file_ops
+    :fixtures: tmp_path
+
+    p = tmp_path / "test.txt"
+    p.write_text("hello")
+    assert p.read_text() == "hello"
+
+Multiple fixtures (comma-separated):
+
+.. code-block:: rst
+
+    .. code-block:: python
+        :name: test_capture
+        :fixtures: tmp_path, capsys
+
+        print("hello")
+        captured = capsys.readouterr()
+        assert captured.out == "hello\n"
+
+Any pytest fixture works, including custom ones defined in ``conftest.py``.
+
 This block just not running:
 
 .. code-block:: rst
