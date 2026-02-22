@@ -5,6 +5,7 @@ from textwrap import dedent
 import pytest
 
 from pytest_rst import (
+    COMMENT_FIXTURES_REGEXP,
     CodeBlock,
     _make_rst_test_func,
     _parse_fixtures,
@@ -1351,4 +1352,234 @@ class TestIntegrationEdgeCases:
                 "*test_plain_2*PASSED*",
             ]
         )
+        assert result.ret == 0
+
+
+# --- Comment-based fixtures: # fixtures: syntax ---
+
+
+class TestCommentFixturesRegexp:
+    @pytest.mark.parametrize(
+        "line,expected",
+        [
+            ("# fixtures: tmp_path", "tmp_path"),
+            ("#fixtures: tmp_path", "tmp_path"),
+            ("#  fixtures:  tmp_path, capsys", "tmp_path, capsys"),
+            ("# fixtures:tmp_path", "tmp_path"),
+        ],
+    )
+    def test_regexp_matches(self, line, expected):
+        m = COMMENT_FIXTURES_REGEXP.match(line)
+        assert m is not None
+        assert m.group(1).strip() == expected.strip()
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "fixtures: tmp_path",
+            "## fixtures: tmp_path",
+            "x = 1  # fixtures: tmp_path",
+        ],
+    )
+    def test_regexp_no_match(self, line):
+        assert COMMENT_FIXTURES_REGEXP.match(line) is None
+
+
+class TestCommentFixturesParsing:
+    def test_comment_fixture_parsed_and_stripped(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_comment_fix
+
+                # fixtures: tmp_path
+                p = tmp_path / "f.txt"
+                assert True
+        """)
+        assert len(blocks) == 1
+        # The comment line is still in the parsed block (parser doesn't strip)
+        assert "# fixtures: tmp_path" in blocks[0].lines
+
+    def test_comment_fixture_with_extra_spaces(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_spaces_fix
+
+                #  fixtures:   tmp_path ,  capsys
+                print("hi")
+        """)
+        assert len(blocks) == 1
+        assert any("fixtures" in line for line in blocks[0].lines)
+
+    def test_comment_fixture_not_at_first_line(self):
+        blocks = _parse("""\
+            .. code-block:: python
+                :name: test_mid_fix
+
+                x = 1
+                # fixtures: tmp_path
+                assert True
+        """)
+        assert len(blocks) == 1
+        assert any("fixtures" in line for line in blocks[0].lines)
+
+
+class TestCommentFixturesIntegration:
+    def test_comment_fixture_single(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_cfx=dedent("""\
+                Example:
+
+                .. code-block:: python
+                    :name: test_comment_single
+
+                    # fixtures: tmp_path
+                    p = tmp_path / "hello.txt"
+                    p.write_text("world")
+                    assert p.read_text() == "world"
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_comment_single*PASSED*"])
+        assert result.ret == 0
+
+    def test_comment_fixture_multiple(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_cfm=dedent("""\
+                Example:
+
+                .. code-block:: python
+                    :name: test_comment_multi
+
+                    # fixtures: tmp_path, capsys
+                    print("hello")
+                    p = tmp_path / "f.txt"
+                    p.write_text("ok")
+                    assert p.read_text() == "ok"
+                    captured = capsys.readouterr()
+                    assert captured.out == "hello\\n"
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_comment_multi*PASSED*"])
+        assert result.ret == 0
+
+    def test_both_directive_and_comment_combined(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_both=dedent("""\
+                Example:
+
+                .. code-block:: python
+                    :name: test_combined
+                    :fixtures: tmp_path
+
+                    # fixtures: capsys
+                    print("hello")
+                    assert tmp_path.is_dir()
+                    captured = capsys.readouterr()
+                    assert captured.out == "hello\\n"
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_combined*PASSED*"])
+        assert result.ret == 0
+
+    def test_comment_fixture_with_extra_spaces(self, pytester):
+        pytester.makefile(
+            ".rst",
+            test_sp=dedent("""\
+                Example:
+
+                .. code-block:: python
+                    :name: test_comment_spaces
+
+                    #  fixtures:   tmp_path
+                    assert tmp_path.is_dir()
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_comment_spaces*PASSED*"])
+        assert result.ret == 0
+
+    def test_comment_fixture_line_stripped_from_execution(self, pytester):
+        """The # fixtures: line should not appear as executed code."""
+        pytester.makefile(
+            ".rst",
+            test_strip=dedent("""\
+                Example:
+
+                .. code-block:: python
+                    :name: test_stripped
+
+                    # fixtures: capsys
+                    import sys
+                    print("executed")
+                    captured = capsys.readouterr()
+                    assert captured.out == "executed\\n"
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_stripped*PASSED*"])
+        assert result.ret == 0
+
+    def test_comment_fixture_not_first_line(self, pytester):
+        """# fixtures: comment works even if not the first line."""
+        pytester.makefile(
+            ".rst",
+            test_mid=dedent("""\
+                Example:
+
+                .. code-block:: python
+                    :name: test_mid_comment
+
+                    x = 1
+                    # fixtures: tmp_path
+                    assert tmp_path.is_dir()
+                    assert x == 1
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_mid_comment*PASSED*"])
+        assert result.ret == 0
+
+    def test_comment_fixture_custom_fixture(self, pytester):
+        pytester.makeconftest(
+            dedent("""\
+            import pytest
+
+            @pytest.fixture()
+            def greeting():
+                return "hello world"
+        """)
+        )
+        pytester.makefile(
+            ".rst",
+            test_ccfx=dedent("""\
+                Custom:
+
+                .. code-block:: python
+                    :name: test_comment_custom
+
+                    # fixtures: greeting
+                    assert greeting == "hello world"
+
+                End.
+            """),
+        )
+        result = pytester.runpytest("-v")
+        result.stdout.fnmatch_lines(["*test_comment_custom*PASSED*"])
         assert result.ret == 0

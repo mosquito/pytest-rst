@@ -30,6 +30,7 @@ class CodeBlock(NamedTuple):
 
 
 CODE_BLOCK_REGEXP = re.compile(r"^\.\. code-block::(\s*(?P<syntax>\S+)\s*)?$")
+COMMENT_FIXTURES_REGEXP = re.compile(r"^#\s*fixtures:\s*(.+)$")
 
 
 def get_indent(s: str, *, indent_char: str = " ") -> int:
@@ -195,9 +196,25 @@ class RSTModule(pytest.Module):
                 ):
                     continue
 
+                fixtures_value = params.get("fixtures", "")
+                fixture_names = set(_parse_fixtures(fixtures_value))
+
+                # Scan for "# fixtures:" comments and strip them
+                filtered_lines = []
+                for line in code_block.lines:
+                    match = COMMENT_FIXTURES_REGEXP.match(line.strip())
+                    if match:
+                        fixture_names.update(
+                            _parse_fixtures(match.group(1)),
+                        )
+                    else:
+                        filtered_lines.append(line)
+
+                fixture_names = tuple(sorted(fixture_names))
+
                 with StringIO() as code_fp:
                     code_fp.write("\n" * code_block.start_line)
-                    for line in code_block.lines:
+                    for line in filtered_lines:
                         code_fp.write(line)
                         code_fp.write("\n")
 
@@ -211,9 +228,6 @@ class RSTModule(pytest.Module):
                     f"{test_name}"
                     f"[{code_block.start_line}:{code_block.end_line}]"
                 )
-
-                fixtures_value = params.get("fixtures", "")
-                fixture_names = _parse_fixtures(fixtures_value)
 
                 if fixture_names:
                     wrapper = _make_rst_test_func(

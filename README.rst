@@ -63,10 +63,13 @@ Code blocks without a ``test_`` name are ignored:
 Fixtures
 --------
 
-Code blocks can request pytest fixtures using the ``:fixtures:`` option.
-Fixtures are injected into the code block's namespace.
+Code blocks can request pytest fixtures. Fixtures are injected into the code
+block's namespace. There are two syntaxes: a directive option and a comment.
 
-Single fixture:
+Directive option (``:fixtures:``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use the ``:fixtures:`` directive option on the code block:
 
 .. code-block:: rst
 
@@ -78,25 +81,36 @@ Single fixture:
         p.write_text("hello")
         assert p.read_text() == "hello"
 
-.. code-block:: python
-    :name: test_file_ops
-    :fixtures: tmp_path
+Comment syntax (``# fixtures:``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Use a ``# fixtures:`` comment inside the code block. This is recommended when
+your RST files are uploaded to PyPI, because PyPI's renderer rejects unknown
+directive options like ``:fixtures:``.
+
+.. code-block:: python
+    :name: test_comment_fixture_readme
+
+    # fixtures: tmp_path
     p = tmp_path / "test.txt"
     p.write_text("hello")
     assert p.read_text() == "hello"
 
 Multiple fixtures (comma-separated):
 
-.. code-block:: rst
+.. code-block:: python
+    :name: test_comment_multi_readme
 
-    .. code-block:: python
-        :name: test_capture
-        :fixtures: tmp_path, capsys
+    # fixtures: tmp_path, capsys
+    print("hello")
+    p = tmp_path / "f.txt"
+    p.write_text("ok")
+    assert p.read_text() == "ok"
+    captured = capsys.readouterr()
+    assert captured.out == "hello\n"
 
-        print("hello")
-        captured = capsys.readouterr()
-        assert captured.out == "hello\n"
+The ``# fixtures:`` line is stripped before execution and does not affect
+your code. Both syntaxes can be combined — fixture names are merged.
 
 Any pytest fixture works, including custom ones defined in ``conftest.py``.
 
