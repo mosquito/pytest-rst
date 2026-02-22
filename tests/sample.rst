@@ -42,6 +42,16 @@ Example 4:
                 .. code-block:: python
                     .. code-block:: python
 
+Example fixture:
+
+.. code-block:: python
+    :name: test_with_fixture
+    :fixtures: tmp_path
+
+    p = tmp_path / "test.txt"
+    p.write_text("hello")
+    assert p.read_text() == "hello"
+
 Example 6:
 
 .. code-block:: python

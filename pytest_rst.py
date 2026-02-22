@@ -1,8 +1,9 @@
 import logging
 import re
+import textwrap
 from io import StringIO
 from pathlib import Path
-from types import CodeType
+from types import CodeType, FunctionType
 from typing import (
     Any,
     Iterable,
@@ -145,6 +146,33 @@ def parse_code_blocks(fp: TextIO) -> Iterator[CodeBlock]:
         index -= 1
 
 
+def _parse_fixtures(value: str) -> Tuple[str, ...]:
+    return tuple(
+        name for name in
+        (s.strip() for s in value.split(","))
+        if name
+    )
+
+
+def _make_rst_test_func(
+    code: CodeType, fixture_names: Tuple[str, ...],
+) -> FunctionType:
+    params = ", ".join(fixture_names)
+    wrapper_src = textwrap.dedent(f"""\
+        def rst_test_func({params}):
+            ns = {{"__name__": "__main__"}}
+            ns.update({{ {", ".join(
+                f"{n!r}: {n}" for n in fixture_names
+            )} }})
+            exec(code, ns)
+    """)
+    local_ns: dict[str, Any] = {}
+    exec(compile(wrapper_src, "<rst-fixture-wrapper>", "exec"),
+         {"code": code}, local_ns)
+    fn: FunctionType = local_ns["rst_test_func"]
+    return fn
+
+
 class RSTTestItem(pytest.Item):
     def __init__(self, name: str, parent: "RSTModule", code: CodeType):
         super().__init__(name=name, parent=parent)
@@ -155,7 +183,7 @@ class RSTTestItem(pytest.Item):
 
 
 class RSTModule(pytest.Module):
-    def collect(self) -> Iterable["RSTTestItem"]:
+    def collect(self) -> Iterable[pytest.Item]:
         with open(self.fspath, "r") as fp:
             for code_block in parse_code_blocks(fp):
                 params = dict(code_block.params)
@@ -175,17 +203,34 @@ class RSTModule(pytest.Module):
                         code_fp.write(line)
                         code_fp.write("\n")
 
-                    yield RSTTestItem.from_parent(
-                        name=(
-                            f"{test_name}"
-                            f"[{code_block.start_line}:{code_block.end_line}]"
-                        ),
+                    code = compile(
+                        source=code_fp.getvalue(),
+                        mode="exec",
+                        filename=self.fspath,
+                    )
+
+                item_name = (
+                    f"{test_name}"
+                    f"[{code_block.start_line}:{code_block.end_line}]"
+                )
+
+                fixtures_value = params.get("fixtures", "")
+                fixture_names = _parse_fixtures(fixtures_value)
+
+                if fixture_names:
+                    wrapper = _make_rst_test_func(
+                        code, fixture_names,
+                    )
+                    yield pytest.Function.from_parent(
+                        name=item_name,
                         parent=self,
-                        code=compile(
-                            source=code_fp.getvalue(),
-                            mode="exec",
-                            filename=self.fspath,
-                        ),
+                        callobj=wrapper,
+                    )
+                else:
+                    yield RSTTestItem.from_parent(
+                        name=item_name,
+                        parent=self,
+                        code=code,
                     )
 
 
@@ -199,9 +244,9 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 @pytest.hookimpl(trylast=True)
 def pytest_collect_file(
-    path: Any,
+    file_path: Path,
     parent: pytest.Collector,
 ) -> Optional[RSTModule]:
-    if path.ext != ".rst":
+    if file_path.suffix != ".rst":
         return None
-    return RSTModule.from_parent(parent=parent, path=Path(path))
+    return RSTModule.from_parent(parent=parent, path=file_path)
